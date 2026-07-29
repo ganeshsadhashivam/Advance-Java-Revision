@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE beans PUBLIC "-//SPRING//DTD BEAN 2.0//EN"
+        "http://www.springframework.org/dtd/spring-beans-2.0.dtd">
+
+<beans>
+
+    <!-- Independent Student Bean configuring all inherited fields -->
+    <bean class="com.kw.acedemy.Students" id="StudentId">
+        <!-- Child fields -->
+        <property name="studentId" value="5"/>
+        <property name="studentName" value="ganesh"/>
+        
+        <!-- Inherited Parent fields -->
+        <property name="name" value="sadhashivam"/>
+        <property name="from" value="maharastra"/>
+        <property name="wallet" value="true"/> <!-- Use true/false for boolean -->
+    </bean>
+
+</beans>

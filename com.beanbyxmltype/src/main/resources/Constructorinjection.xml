@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE beans PUBLIC "-//SPRING//DTD BEAN 2.0//EN"
+        "http://www.springframework.org/dtd/spring-beans-2.0.dtd">
+<beans>
+
+    <bean class="com.kw.acedemy.Students" id="StudentId">
+        <!-- Matches: Students(studentName, studentId, name, from, wallet) -->
+        <constructor-arg index="0" value="ganesh"/>
+        <constructor-arg index="1" value="5"/>
+        <constructor-arg index="2" value="sadhashivam"/>
+        <constructor-arg index="3" value="maharastra"/>
+        <constructor-arg index="4" value="true"/>
+    </bean>
+
+</beans>
