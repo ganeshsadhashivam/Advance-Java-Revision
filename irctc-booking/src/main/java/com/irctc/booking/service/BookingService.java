@@ -201,11 +201,24 @@ public class BookingService {
 
 		event.setBookedAt(savedBooking.getCreatedAt());
 		
+		/*
+		 * producer without key will write to single partition
+		 */
+			//kafkaService.publishMessage("booking-confirmed", event);
+			//System.out.println("Event Published to Kafka....");
 
-			kafkaService.publishMessage("booking-confirmed", event);
-			System.out.println("Event Published to Kafka....");
-
-		
+			/*
+			 * producer with single partition key will write to different Partitions
+			 */
+			/*
+			 * kafkaService.publishMessage("booking-confirmed",event.getPnrNumber(),event);
+			 */
+			/*
+			 * producer with 3 partition Topic name "booking-confirmed-with-3-partitions"
+			 */
+			kafkaService.publishMessage("booking-confirmed-with-3-partitions",event.getPnrNumber(),event);
+			
+			
 		// Construct Response
 		BookingResponse response = new BookingResponse();
 
