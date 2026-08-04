@@ -1,0 +1,13 @@
+server:
+  port: 8888
+
+spring:
+  cloud:
+    config:
+      server:
+        git:
+          uri: https://github.com/ganeshsadhashivam/Advance-Java-Revision
+          default-label: main
+          clone-on-start: true
+          search-paths:
+            - configurationfileforaMicroserviceservice
