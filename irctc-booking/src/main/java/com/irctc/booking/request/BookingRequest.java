@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 import com.irctc.booking.enums.BookingStatus;
+import com.irctc.booking.enums.PaymentMode;
 import com.irctc.booking.enums.PaymentStatus;
 import com.irctc.booking.enums.TravelClass;
 
@@ -26,8 +27,18 @@ public class BookingRequest {
     private BigDecimal totalFare;
     
     private TravelClass travelClass;
+    
+    private PaymentMode paymentMode;
 
-    public TravelClass getTravelClass() {
+    public PaymentMode getPaymentMode() {
+		return paymentMode;
+	}
+
+	public void setPaymentMode(PaymentMode paymentMode) {
+		this.paymentMode = paymentMode;
+	}
+
+	public TravelClass getTravelClass() {
 		return travelClass;
 	}
 
@@ -118,6 +129,8 @@ public class BookingRequest {
 	public void setPaymentStatus(PaymentStatus paymentStatus) {
 		this.paymentStatus = paymentStatus;
 	}
+
+	
     
     
 }

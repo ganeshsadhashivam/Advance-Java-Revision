@@ -22,7 +22,7 @@ public class BookingEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "pnr_number", unique = true, nullable = false, length = 10)
+    @Column(name = "pnr_number", unique = true, nullable = false, length = 30)
     private String pnrNumber;
 
     @ManyToOne(fetch = FetchType.LAZY)

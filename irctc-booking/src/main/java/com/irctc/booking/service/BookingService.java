@@ -11,10 +11,16 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.irctc.booking.dto.BookingConfirmedEvent;
+import com.irctc.booking.dto.PaymentRequest;
+import com.irctc.booking.dto.PaymentResponse;
 import com.irctc.booking.entity.BookingEntity;
 import com.irctc.booking.entity.TrainEntity;
 import com.irctc.booking.entity.UserEntity;
+import com.irctc.booking.enums.BookingStatus;
+import com.irctc.booking.enums.PaymentStatus;
+import com.irctc.booking.exception.PaymentFailedException;
 import com.irctc.booking.exception.SeatNotAvailableException;
+import com.irctc.booking.interfaces.PaymentFeignClient;
 import com.irctc.booking.kafka.producer.service.KafkaService;
 import com.irctc.booking.repository.BookingRepository;
 import com.irctc.booking.repository.TrainRepository;
@@ -37,6 +43,15 @@ public class BookingService {
 	
 	@Autowired
 	KafkaService kafkaService;
+	
+	/*
+	 * on 10-08-26 circuit breaker practice
+	 */
+//	@Autowired
+//	PaymentFeignClient paymentFeignClient;
+	
+	@Autowired
+	PaymentServiceClient paymentServiceClient;
 	
 	/*
 	 * for pagination 
@@ -135,117 +150,386 @@ public class BookingService {
 	    return responses;
 	}
 
+//	@Transactional
+//	public BookingResponse doBooking(BookingRequest bookingRequest)
+//	{
+//		
+//		BookingEntity bookingEntity = new BookingEntity();
+//
+//		bookingEntity.setPnrNumber(bookingRequest.getPnrNumber());
+//		bookingEntity.setJourneyDate(bookingRequest.getJourneyDate());
+//		bookingEntity.setFromStation(bookingRequest.getFromStation());
+//		bookingEntity.setToStation(bookingRequest.getToStation());
+//		bookingEntity.setPassengerCount(bookingRequest.getPassengerCount());
+//		bookingEntity.setTotalFare(bookingRequest.getTotalFare());
+//		bookingEntity.setTravelClass(bookingRequest.getTravelClass());
+//		bookingEntity.setBookingStatus(bookingRequest.getBookingStatus());
+//		bookingEntity.setPaymentStatus(bookingRequest.getPaymentStatus());
+//
+//		// Set UserEntity
+//		UserEntity user = userRepository.findById(bookingRequest.getUserId())
+//		        .orElseThrow(() -> new RuntimeException("User not found"));
+//		bookingEntity.setUser(user);
+//
+//		// Set TrainEntity
+//		TrainEntity train = trainRepository.findById(bookingRequest.getTrainId())
+//		        .orElseThrow(() -> new RuntimeException("Train not found"));
+//		bookingEntity.setTrain(train);
+//		
+//		
+//		if (train.getAvailableSeats() < bookingRequest.getPassengerCount()) {
+//			throw new SeatNotAvailableException("Seats not available");
+//		}
+//		
+//		PaymentRequest paymentRequest = new PaymentRequest();
+//
+//		paymentRequest.setPnrNumber(bookingRequest.getPnrNumber());
+//		paymentRequest.setAmount(bookingRequest.getTotalFare());
+//		paymentRequest.setPaymentMode(bookingRequest.getPaymentMode());
+//		
+//		PaymentResponse paymentRespone = paymentFeignClient.processPayment(paymentRequest);
+//		
+//		train.setAvailableSeats(
+//		        train.getAvailableSeats() - bookingRequest.getPassengerCount());
+//
+//		trainRepository.save(train);
+//
+//		// Save Booking
+//		BookingEntity savedBooking = bookingRepository.save(bookingEntity);
+//		
+//		
+//		//Send Events to Kafka for Notification.
+//		BookingConfirmedEvent event = new BookingConfirmedEvent();
+//
+//		event.setBookingId(savedBooking.getId());
+//		event.setPnrNumber(savedBooking.getPnrNumber());
+//
+//		event.setUserId(savedBooking.getUser().getId());
+//		event.setUserName(savedBooking.getUser().getName());
+//
+//		event.setTrainId(savedBooking.getTrain().getId());
+//		event.setTrainNumber(savedBooking.getTrain().getTrainNumber());
+//		event.setTrainName(savedBooking.getTrain().getTrainName());
+//
+//		event.setJourneyDate(savedBooking.getJourneyDate());
+//		event.setFromStation(savedBooking.getFromStation());
+//		event.setToStation(savedBooking.getToStation());
+//
+//		event.setPassengerCount(savedBooking.getPassengerCount());
+//		event.setTotalFare(savedBooking.getTotalFare());
+//
+//		event.setTravelClass(savedBooking.getTravelClass().name());
+//		event.setBookingStatus(savedBooking.getBookingStatus().name());
+//		event.setPaymentStatus(savedBooking.getPaymentStatus().name());
+//
+//		event.setBookedAt(savedBooking.getCreatedAt());
+//		
+//		/*
+//		 * producer without key will write to single partition
+//		 */
+//			//kafkaService.publishMessage("booking-confirmed", event);
+//			//System.out.println("Event Published to Kafka....");
+//
+//			/*
+//			 * producer with single partition key will write to different Partitions
+//			 */
+//			/*
+//			 * kafkaService.publishMessage("booking-confirmed",event.getPnrNumber(),event);
+//			 */
+//			/*
+//			 * producer with 3 partition Topic name "booking-confirmed-with-3-partitions"
+//			 */
+//			kafkaService.publishMessage("booking-confirmed-with-3-partitions",event.getPnrNumber(),event);
+//			
+//			
+//		// Construct Response
+//		BookingResponse response = new BookingResponse();
+//
+//		response.setId(savedBooking.getId());
+//		response.setPnrNumber(savedBooking.getPnrNumber());
+//
+//		response.setUserId(savedBooking.getUser().getId());
+//		response.setUserName(savedBooking.getUser().getName());
+//
+//		response.setTrainId(savedBooking.getTrain().getId());
+//		response.setTrainNumber(savedBooking.getTrain().getTrainNumber());
+//		response.setTrainName(savedBooking.getTrain().getTrainName());
+//
+//		response.setTravelClass(savedBooking.getTravelClass());
+//		response.setJourneyDate(savedBooking.getJourneyDate());
+//		response.setFromStation(savedBooking.getFromStation());
+//		response.setToStation(savedBooking.getToStation());
+//
+//		response.setPassengerCount(savedBooking.getPassengerCount());
+//		response.setTotalFare(savedBooking.getTotalFare());
+//
+//		response.setBookingStatus(savedBooking.getBookingStatus());
+//		response.setPaymentStatus(savedBooking.getPaymentStatus());
+//
+//		response.setCreatedAt(savedBooking.getCreatedAt());
+//		
+//		return response;
+//
+//	}
+	
+	
+	/*
+	 * Receive Booking Request
+        │
+        ▼
+Validate User
+        │
+        ▼
+Validate Train
+        │
+        ▼
+Check Seat Availability
+        │
+        ▼
+Create BookingEntity
+        │
+        ▼
+BOOKING_STATUS = PENDING
+PAYMENT_STATUS = PENDING
+        │
+        ▼
+Save Booking
+        │
+        ▼
+bookingId Generated
+        │
+        ▼
+Create PaymentRequest
+        │
+        ▼
+Call Payment Service (Feign)
+        │
+        ▼
+Payment SUCCESS ?
+     │            │
+    NO           YES
+     │            │
+Update        Update Booking
+FAILED        SUCCESS
+                  │
+                  ▼
+          Reduce Available Seats
+                  │
+                  ▼
+          Publish Kafka Event
+                  │
+                  ▼
+          Return BookingResponse
+	 */
+	
+	
+	private String generatePnrNumber() {
+
+	    long number = System.currentTimeMillis() % 1000000000L;
+
+	    return "PNR" + number;
+	}
+	
 	@Transactional
-	public BookingResponse doBooking(BookingRequest bookingRequest)
-	{
-		
-		BookingEntity bookingEntity = new BookingEntity();
+	public BookingResponse doBooking(BookingRequest bookingRequest) {
 
-		bookingEntity.setPnrNumber(bookingRequest.getPnrNumber());
-		bookingEntity.setJourneyDate(bookingRequest.getJourneyDate());
-		bookingEntity.setFromStation(bookingRequest.getFromStation());
-		bookingEntity.setToStation(bookingRequest.getToStation());
-		bookingEntity.setPassengerCount(bookingRequest.getPassengerCount());
-		bookingEntity.setTotalFare(bookingRequest.getTotalFare());
-		bookingEntity.setTravelClass(bookingRequest.getTravelClass());
-		bookingEntity.setBookingStatus(bookingRequest.getBookingStatus());
-		bookingEntity.setPaymentStatus(bookingRequest.getPaymentStatus());
+	    BookingEntity bookingEntity = new BookingEntity();
+	    
+	    String pnrNumber = generatePnrNumber();
 
-		// Set UserEntity
-		UserEntity user = userRepository.findById(bookingRequest.getUserId())
-		        .orElseThrow(() -> new RuntimeException("User not found"));
-		bookingEntity.setUser(user);
+//	    bookingEntity.setPnrNumber(bookingRequest.getPnrNumber());
+	    bookingEntity.setPnrNumber(pnrNumber);
+	    bookingEntity.setJourneyDate(bookingRequest.getJourneyDate());
+	    bookingEntity.setFromStation(bookingRequest.getFromStation());
+	    bookingEntity.setToStation(bookingRequest.getToStation());
+	    bookingEntity.setPassengerCount(bookingRequest.getPassengerCount());
+	    bookingEntity.setTotalFare(bookingRequest.getTotalFare());
+	    bookingEntity.setTravelClass(bookingRequest.getTravelClass());
 
-		// Set TrainEntity
-		TrainEntity train = trainRepository.findById(bookingRequest.getTrainId())
-		        .orElseThrow(() -> new RuntimeException("Train not found"));
-		bookingEntity.setTrain(train);
-		
-		
-		if (train.getAvailableSeats() < bookingRequest.getPassengerCount()) {
-			throw new SeatNotAvailableException("Seats not available");
-		}
-		
-		train.setAvailableSeats(
-		        train.getAvailableSeats() - bookingRequest.getPassengerCount());
+	    // Initially keep booking in PENDING state
+	    bookingEntity.setBookingStatus(BookingStatus.PENDING);
+	    bookingEntity.setPaymentStatus(PaymentStatus.PENDING);
 
-		trainRepository.save(train);
+	    // User
+	    UserEntity user = userRepository.findById(bookingRequest.getUserId())
+	            .orElseThrow(() -> new RuntimeException("User not found"));
+	    bookingEntity.setUser(user);
 
-		// Save Booking
-		BookingEntity savedBooking = bookingRepository.save(bookingEntity);
-		
-		
-		//Send Events to Kafka for Notification.
-		BookingConfirmedEvent event = new BookingConfirmedEvent();
+	    // Train
+	    TrainEntity train = trainRepository.findById(bookingRequest.getTrainId())
+	            .orElseThrow(() -> new RuntimeException("Train not found"));
+	    bookingEntity.setTrain(train);
 
-		event.setBookingId(savedBooking.getId());
-		event.setPnrNumber(savedBooking.getPnrNumber());
+	    // Seat validation
+	    if (train.getAvailableSeats() < bookingRequest.getPassengerCount()) {
+	        throw new SeatNotAvailableException("Seats not available");
+	    }
 
-		event.setUserId(savedBooking.getUser().getId());
-		event.setUserName(savedBooking.getUser().getName());
+	    // -----------------------------------------------------
+	    // Save Booking FIRST (Booking Id will be generated)
+	    // -----------------------------------------------------
+	    BookingEntity savedBooking = bookingRepository.save(bookingEntity);
 
-		event.setTrainId(savedBooking.getTrain().getId());
-		event.setTrainNumber(savedBooking.getTrain().getTrainNumber());
-		event.setTrainName(savedBooking.getTrain().getTrainName());
+	    // -----------------------------------------------------
+	    // Prepare Payment Request
+	    // -----------------------------------------------------
+	    PaymentRequest paymentRequest = new PaymentRequest();
 
-		event.setJourneyDate(savedBooking.getJourneyDate());
-		event.setFromStation(savedBooking.getFromStation());
-		event.setToStation(savedBooking.getToStation());
+	    paymentRequest.setBookingId(savedBooking.getId());
+	    paymentRequest.setPnrNumber(savedBooking.getPnrNumber());
+	    paymentRequest.setAmount(savedBooking.getTotalFare());
+	    paymentRequest.setPaymentMode(bookingRequest.getPaymentMode());
 
-		event.setPassengerCount(savedBooking.getPassengerCount());
-		event.setTotalFare(savedBooking.getTotalFare());
+	    // -----------------------------------------------------
+	    // Call Payment Service ----- FeignClient 
+	    /*
+	     * so on 10-8-26 circuit breaker topic was discussed so it was implemented in PaymentServiceClient
+	     * in that we have implemented Circuit Breaker don't want the Circuit Breaker to treat your
+	     *  entire booking operation as a remote service call
+	     *  
+	     * 
+	     */
+	    // -----------------------------------------------------
+	   // without circuit breaker
+//	    PaymentResponse paymentResponse = paymentFeignClient.processPayment(paymentRequest);
+	    /*
+	     * with circuit breaker 
+	     */
+	  /*  minimumNumberOfCalls=3
+	    		failureRateThreshold=50
+	    		slidingWindowSize=5
+	    		waitDurationInOpenState=10s
+	    		permittedNumberOfCallsInHalfOpenState=2
+	    /*
+	     *                 CLOSED
+                   |
+                   |
+Request 1 → ❌     |
+Request 2 → ❌     |
+Request 3 → ❌     |
+                   |
+                   | 3 calls completed
+                   | Failure rate = 100%
+                   | 100% >= 50%
+                   v
+                 OPEN
+                   |
+                   | Wait 10 seconds
+                   v
+               HALF_OPEN
+                   |
+             +-----+-----+
+             |           |
+       Test 1 → ❌   Test 2 → ❌
+             |           |
+             +-----+-----+
+                   |
+                   v
+                 OPEN
+	     */
+	    PaymentResponse paymentResponse = paymentServiceClient.processPayment(paymentRequest);
 
-		event.setTravelClass(savedBooking.getTravelClass().name());
-		event.setBookingStatus(savedBooking.getBookingStatus().name());
-		event.setPaymentStatus(savedBooking.getPaymentStatus().name());
+	    // -----------------------------------------------------
+	    // Payment Failed
+	    // -----------------------------------------------------
+//	    if (paymentResponse.getPaymentStatus() == PaymentStatus.FAILED) {
+//
+//	        savedBooking.setPaymentStatus(PaymentStatus.FAILED);
+//	        savedBooking.setBookingStatus(BookingStatus.FAILED);
+//
+//	        bookingRepository.save(savedBooking);
+//
+//	        throw new RuntimeException("Payment Failed");
+//	    }
+	    if (paymentResponse.getPaymentStatus() == PaymentStatus.FAILED) {
 
-		event.setBookedAt(savedBooking.getCreatedAt());
-		
-		/*
-		 * producer without key will write to single partition
-		 */
-			//kafkaService.publishMessage("booking-confirmed", event);
-			//System.out.println("Event Published to Kafka....");
+	        savedBooking.setPaymentStatus(PaymentStatus.FAILED);
+	        savedBooking.setBookingStatus(BookingStatus.FAILED);
 
-			/*
-			 * producer with single partition key will write to different Partitions
-			 */
-			/*
-			 * kafkaService.publishMessage("booking-confirmed",event.getPnrNumber(),event);
-			 */
-			/*
-			 * producer with 3 partition Topic name "booking-confirmed-with-3-partitions"
-			 */
-			kafkaService.publishMessage("booking-confirmed-with-3-partitions",event.getPnrNumber(),event);
-			
-			
-		// Construct Response
-		BookingResponse response = new BookingResponse();
+	        bookingRepository.save(savedBooking);
 
-		response.setId(savedBooking.getId());
-		response.setPnrNumber(savedBooking.getPnrNumber());
+	        throw new PaymentFailedException(
+	                "Payment was declined or failed."
+	        );
+	    }
 
-		response.setUserId(savedBooking.getUser().getId());
-		response.setUserName(savedBooking.getUser().getName());
+	    // -----------------------------------------------------
+	    // Payment Successful
+	    // -----------------------------------------------------
+	    savedBooking.setPaymentStatus(PaymentStatus.SUCCESS);
+	    savedBooking.setBookingStatus(BookingStatus.CONFIRMED);
 
-		response.setTrainId(savedBooking.getTrain().getId());
-		response.setTrainNumber(savedBooking.getTrain().getTrainNumber());
-		response.setTrainName(savedBooking.getTrain().getTrainName());
+	    bookingRepository.save(savedBooking);
 
-		response.setTravelClass(savedBooking.getTravelClass());
-		response.setJourneyDate(savedBooking.getJourneyDate());
-		response.setFromStation(savedBooking.getFromStation());
-		response.setToStation(savedBooking.getToStation());
+	    // -----------------------------------------------------
+	    // Reduce Seats
+	    // -----------------------------------------------------
+	    train.setAvailableSeats(
+	            train.getAvailableSeats() - bookingRequest.getPassengerCount());
 
-		response.setPassengerCount(savedBooking.getPassengerCount());
-		response.setTotalFare(savedBooking.getTotalFare());
+	    trainRepository.save(train);
 
-		response.setBookingStatus(savedBooking.getBookingStatus());
-		response.setPaymentStatus(savedBooking.getPaymentStatus());
+	    // -----------------------------------------------------
+	    // Kafka Event
+	    // -----------------------------------------------------
+	    BookingConfirmedEvent event = new BookingConfirmedEvent();
 
-		response.setCreatedAt(savedBooking.getCreatedAt());
-		
-		return response;
+	    event.setBookingId(savedBooking.getId());
+	    event.setPnrNumber(savedBooking.getPnrNumber());
 
+	    event.setUserId(savedBooking.getUser().getId());
+	    event.setUserName(savedBooking.getUser().getName());
+
+	    event.setTrainId(savedBooking.getTrain().getId());
+	    event.setTrainNumber(savedBooking.getTrain().getTrainNumber());
+	    event.setTrainName(savedBooking.getTrain().getTrainName());
+
+	    event.setJourneyDate(savedBooking.getJourneyDate());
+	    event.setFromStation(savedBooking.getFromStation());
+	    event.setToStation(savedBooking.getToStation());
+
+	    event.setPassengerCount(savedBooking.getPassengerCount());
+	    event.setTotalFare(savedBooking.getTotalFare());
+
+	    event.setTravelClass(savedBooking.getTravelClass().name());
+	    event.setBookingStatus(savedBooking.getBookingStatus().name());
+	    event.setPaymentStatus(savedBooking.getPaymentStatus().name());
+
+	    event.setBookedAt(savedBooking.getCreatedAt());
+
+	    kafkaService.publishMessage(
+	            "booking-confirmed-with-3-partitions",
+	            event.getPnrNumber(),
+	            event);
+
+	    // -----------------------------------------------------
+	    // Response
+	    // -----------------------------------------------------
+	    BookingResponse response = new BookingResponse();
+
+	    response.setId(savedBooking.getId());
+	    response.setPnrNumber(savedBooking.getPnrNumber());
+
+	    response.setUserId(savedBooking.getUser().getId());
+	    response.setUserName(savedBooking.getUser().getName());
+
+	    response.setTrainId(savedBooking.getTrain().getId());
+	    response.setTrainNumber(savedBooking.getTrain().getTrainNumber());
+	    response.setTrainName(savedBooking.getTrain().getTrainName());
+
+	    response.setTravelClass(savedBooking.getTravelClass());
+	    response.setJourneyDate(savedBooking.getJourneyDate());
+	    response.setFromStation(savedBooking.getFromStation());
+	    response.setToStation(savedBooking.getToStation());
+
+	    response.setPassengerCount(savedBooking.getPassengerCount());
+	    response.setTotalFare(savedBooking.getTotalFare());
+
+	    response.setBookingStatus(savedBooking.getBookingStatus());
+	    response.setPaymentStatus(savedBooking.getPaymentStatus());
+
+	    response.setCreatedAt(savedBooking.getCreatedAt());
+
+	    return response;
 	}
 }

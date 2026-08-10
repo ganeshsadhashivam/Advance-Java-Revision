@@ -1,17 +1,15 @@
-package com.irctc.booking;
+package com.irctc.payment;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
-import org.springframework.cloud.openfeign.EnableFeignClients;
 
 @SpringBootApplication
 @EnableDiscoveryClient
-@EnableFeignClients
-public class IrctcBookingApplication {
+public class IrctcPaymentApplication {
 
 	public static void main(String[] args) {
-		SpringApplication.run(IrctcBookingApplication.class, args);
+		SpringApplication.run(IrctcPaymentApplication.class, args);
 	}
 
 }

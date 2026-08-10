@@ -7,5 +7,5 @@ public enum BookingStatus {
     RAC,
     WAITING,
     CANCELLED,
-    COMPLETED
+    COMPLETED, FAILED
 }
