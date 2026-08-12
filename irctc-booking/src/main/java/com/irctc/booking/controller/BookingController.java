@@ -19,7 +19,7 @@ import com.irctc.booking.response.BookingResponse;
 import com.irctc.booking.service.BookingService;
 
 @RestController
-@RequestMapping("/irctc/booking/")
+@RequestMapping("/irctc/booking")
 public class BookingController {
 
 	@Autowired
@@ -52,7 +52,7 @@ public class BookingController {
 	}
 	 */
 	
-	@PostMapping("confirmticket")
+	@PostMapping("/confirmticket")
 	public BookingResponse bookingService(@RequestBody BookingRequest bookingRequest)
 	{
 		return bookingService.doBooking(bookingRequest);

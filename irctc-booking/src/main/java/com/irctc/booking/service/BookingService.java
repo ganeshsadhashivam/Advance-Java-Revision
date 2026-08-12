@@ -428,6 +428,10 @@ Request 3 → ❌     |
                  OPEN
 	     */
 	    PaymentResponse paymentResponse = paymentServiceClient.processPayment(paymentRequest);
+	    System.out.println(
+	            "Payment Response Status: "
+	            + paymentResponse.getPaymentStatus()
+	    );
 
 	    // -----------------------------------------------------
 	    // Payment Failed
